@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secret Santa Generator</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background-color: #f9f9f9; }
+    .container { max-width: 600px; margin: auto; padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); }
+    h1 { text-align: center; color: #333; }
+    .error { color: red; text-align: center; margin-bottom: 10px; }
+    .participant-group { margin-bottom: 10px; }
+    label { display: inline-block; width: 80px; }
+    button { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Secret Santa Generator</h1>
+
+    <% if (message) { %>
+      <div class="error"><%= message %></div>
+    <% } %>
+
+    <form action="/generate" method="POST">
+      <div id="participants">
+        <div class="participant-group">
+          <label>Name: <input type="text" name="participants[0][name]" required></label>
+          <label>Email: <input type="email" name="participants[0][email]" required></label>
+          <label>Partner: <input type="text" name="participants[0][partner]"></label>
+        </div>
+      </div>
+
+      <button type="button" onclick="addParticipant()">Add Another Participant</button>
+      <button type="submit">Generate Secret Santa</button>
+    </form>
+  </div>
+
+  <script>
+    let count = 1;
+    function addParticipant() {
+      const div = document.createElement("div");
+      div.className = "participant-group";
+      div.innerHTML = `
+        <label>Name: <input type="text" name="participants[${count}][name]" required></label>
+        <label>Email: <input type="email" name="participants[${count}][email]" required></label>
+        <label>Partner: <input type="text" name="participants[${count}][partner]"></label>
+      `;
+      document.getElementById("participants").appendChild(div);
+      count++;
+    }
+  </script>
+</body>
+</html>
