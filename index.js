@@ -21,63 +21,101 @@ const transporter = nodemailer.createTransport({
 
 // Helper function to generate Secret Santa pairs avoiding partners
 function generateSecretSanta(participants) {
-  const shuffled = [...participants];
-  const santaPairs = {};
+  const maxAttempts = 200;
+  let attempt = 0;
 
-  // Shuffle and assign pairs, reshuffle if a partner is paired with their own partner
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  while (attempt < maxAttempts) {
+    attempt++;
+    const shuffled = [...participants].sort(() => Math.random() - 0.5);
+    const santaPairs = {};
+    let valid = true;
+
+    for (let i = 0; i < shuffled.length; i++) {
+      const giver = shuffled[i];
+      const receiver = shuffled[(i + 1) % shuffled.length];
+
+      if (giver.partner && giver.partner === receiver.name) {
+        valid = false;
+        break; // Retry
+      }
+
+      santaPairs[giver.name] = receiver.name;
+    }
+
+    if (valid) return santaPairs;
   }
 
-  for (let i = 0; i < shuffled.length; i++) {
-    const giver = shuffled[i];
-    let receiver = shuffled[(i + 1) % shuffled.length];
-    if (giver.partner === receiver.name) return null;
-    santaPairs[giver.name] = receiver.name;
-  }
-
-  return santaPairs;
+  return null; // Failed after multiple attempts
 }
 
-// Main form route
+// Routes
 app.get("/", (req, res) => {
   res.render("index", { message: null });
 });
 
-// Generate route
 app.post("/generate", async (req, res) => {
   const { participants } = req.body;
   const santaPairs = generateSecretSanta(participants);
 
   if (!santaPairs) {
-    return res.render("index", { message: "Error: Could not assign pairs without pairing partners. Please try again." });
+    return res.render("index", {
+      message: "Error: Could not assign pairs without pairing partners. Please try again.",
+    });
   }
 
   try {
-    // Send email notifications
     for (let participant of participants) {
       const recipientName = santaPairs[participant.name];
-      const recipientEmail = participants.find(p => p.name === recipientName).email;
+      const recipientEmail = participants.find((p) => p.name === recipientName).email;
 
       const mailOptions = {
-        from: process.env.EMAIL_USER,
+        from: `"🎅 Secret Santa" <${process.env.EMAIL_USER}>`,
         to: participant.email,
-        subject: "Your Secret Santa Assignment!",
-        text: `Hello ${participant.name},\n\nYou are the Secret Santa for ${recipientName}!\n\nHappy gifting! 🎅🎄`,
+        subject: "🎁 Your Secret Santa Assignment!",
+        html: `
+          <div style="font-family: Arial, sans-serif; background-color: #f9fafc; padding: 20px; border-radius: 10px;">
+            <div style="background: linear-gradient(135deg, #e63946, #ffb703); padding: 15px; border-radius: 8px; text-align: center;">
+              <h1 style="color: white; margin: 0;">🎅 Secret Santa 2025 🎄</h1>
+            </div>
+            
+            <div style="background-color: #fff; margin-top: 20px; padding: 20px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+              <p style="font-size: 16px; color: #333;">Hello <strong>${participant.name}</strong>,</p>
+              <p style="font-size: 16px; color: #333;">
+                You’ve been chosen as the <strong>Secret Santa</strong> for:
+              </p>
+              
+              <div style="text-align: center; margin: 20px 0;">
+                <h2 style="color: #2a9d8f; font-size: 24px;">🎁 ${recipientName} 🎁</h2>
+              </div>
+
+              <p style="font-size: 15px; color: #555;">
+                Keep it a secret and make sure your gift brings a smile 😊
+              </p>
+
+              <p style="font-size: 15px; color: #555;">
+                Wishing you a fun and festive celebration!
+              </p>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px; font-size: 14px; color: #777;">
+              <p>Made with ❤️ by the Secret Santa Team</p>
+            </div>
+          </div>
+        `,
       };
 
       await transporter.sendMail(mailOptions);
+      console.log(`✅ Email sent to ${participant.name} (${participant.email})`);
     }
 
     res.render("result", { pairs: santaPairs });
   } catch (error) {
     console.error(error);
-    res.render("index", { message: "Failed to send emails. Please check your email configuration." });
+    res.render("index", { message: "❌ Failed to send emails. Please check your email configuration." });
   }
 });
 
 // Start server
 app.listen(port, () => {
-  console.log(`Secret Santa app listening at http://localhost:${port}`);
+  console.log(`🎄 Secret Santa app listening at http://localhost:${port}`);
 });
